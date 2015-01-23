@@ -1,0 +1,216 @@
+Train Journey Statistics for Sydney & Around
+========================================================
+author: Helen H
+date: `r date()`
+font-import: http://fonts.googleapis.com/css?family=Risque
+font-family: 'Risque'
+
+
+Project Overview
+========================================================
+
+This project is looking into some statistical facts based on data collected by Transport NSW. Data for Sydney & Outter Sydney is included from 2001 to 2013. Find the Shiny Apps from <https://helenh2.shinyapps.io/Project/>
+
+Area of interests are:
+<small>
+- Among selected years (for selected lines), which year had the highest journey?
+- Among selected years (for selected lines), which month had the highest journey?
+- What's the total journeys recorded for selected years (for selected lines)?
+- How does the number of journeys vary year on year (by lines)?
+</small>
+
+Design Ideas
+========================================================
+
+
+**(a) Input**
+This refers all needed entry or adjustments to activate and drive the process, which in my case contains:
+<small>
+- *year range*: a slider to make it easier for adjustments
+- *train lines*: a dropdown list to support multiple selection
+- *option for display graphs*:a check box for either separate view by line or overall
+</small>
+
+***
+
+**(b) Output**
+
+<small>
+This refers to any relevant return (either logical, numeric or graphic) after processing through above inputs, which in my project will be the answers to previous areas of interest. 
+</small>
+
+***
+
+
+Demo
+========================================================
+
+This is an example with *2003-2009* data for four different sdney lines: Western (high residential area), CBD (busy always), Blue Mountains (remote tourism attraction) and South (another residetial area).
+
+
+```{r echo=FALSE,message=FALSE}
+library(ggplot2)
+library(reshape2)
+library(shiny)
+library(plyr)
+library(gsubfn) #strapply
+
+line <- c('Western','CBD','Blue Mountains','South')
+year1 <- as.numeric(2003)
+year2 <- as.numeric(2009)
+
+c(year1,year2,line)
+```
+</small>
+
+
+***
+
+Value output (regardless of the check box) look like below:
+
+```{r echo=FALSE,message=FALSE}
+#   Read in character appearances CSV
+Transport <- read.csv("Transport NSW.csv", stringsAsFactors = FALSE)
+# Relabelling
+colnames(Transport) <- c('line','month','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013')
+# Melt table
+mdata <- melt(Transport, id=c("line","month"))
+# Relabelling
+colnames(mdata) <- c('line','month','year','count')
+# Convert factor (from melt) to int
+mdata$year <- as.numeric(as.character(mdata$year))
+
+# for QA
+line <- c('Western','CBD','Blue Mountains','South')
+year1 <- as.numeric(2003)
+year2 <- as.numeric(2009)
+
+highYr <- function(line,year1,year2){
+  
+  #   get just the data cut within input range
+  rpt_data <- mdata[mdata$line %in% line&mdata$year>=year1&mdata$year<=year2,]
+  #   aggr by year
+  rpt_year_cal <- ddply(rpt_data,.(year),summarize,total_count_cal=sum(count))
+  #   order by total count per year
+  order <- rpt_year_cal[order(-rpt_year_cal[,2]),]
+  year <- order[1,"year"]
+  return(year)
+  
+}
+
+highMth <- function(line,year1,year2){
+  
+  #   get just the data cut within input range
+  rpt_data <- mdata[mdata$line %in% line&mdata$year>=year1&mdata$year<=year2,]
+  #   aggr by month
+  rpt_month_cal <- ddply(rpt_data,.(month),summarize,total_count_cal=sum(count))
+  #   order by total count per month
+  order_m <- rpt_month_cal[order(-rpt_month_cal[,2]),]
+  month <- order_m[1,"month"]
+  return(month)
+  
+}
+
+totalJourney <- function(line,year1,year2){
+  
+  #   get just the data cut within input range
+  rpt_data <- mdata[mdata$line %in% line&mdata$year>=year1&mdata$year<=year2,]
+  #   aggr to overall count
+  rpt_total_cal <- ddply(rpt_data,.(),summarize,total_count_cal=sum(count))
+  all <- rpt_total_cal[,2]
+  return(all)
+  
+}
+
+highYr(line,year1,year2)
+highMth(line,year1,year2)
+totalJourney(line,year1,year2)
+```
+
+
+
+***
+
+
+Conditional Graphic Output
+========================================================
+<small>* check box ticked (as overall view)</small>
+```{r echo=FALSE,message=FALSE}
+
+library(ggplot2)
+library(reshape2)
+library(shiny)
+library(plyr)
+library(gsubfn) #strapply
+
+#   Read in character appearances CSV
+Transport <- read.csv("Transport NSW.csv", stringsAsFactors = FALSE)
+# Relabelling
+colnames(Transport) <- c('line','month','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013')
+# Melt table
+mdata <- melt(Transport, id=c("line","month"))
+# Relabelling
+colnames(mdata) <- c('line','month','year','count')
+# Convert factor (from melt) to int
+mdata$year <- as.numeric(as.character(mdata$year))
+
+# for QA
+line <- c('Western','CBD','Blue Mountains','South')
+year1 <- as.numeric(2003)
+year2 <- as.numeric(2009)
+
+  
+#   get just the data cut within input range
+  rpt_data <- mdata[mdata$line %in% line&mdata$year>=year1&mdata$year<=year2,]
+#   aggr by year
+  rpt_year_c <- ddply(rpt_data,.(year),summarize,total_count_c=sum(count))
+#   plot
+  cp <- ggplot(rpt_year_c, aes(x=year, y=total_count_c),width = 0.3, height = 0.3)
+  cp <- cp + geom_bar(stat="identity", position=position_dodge(),fill = rainbow(n=length(rpt_year_c$year)))
+  cp <- cp + geom_smooth()
+  print(cp)
+
+```
+
+***
+
+<small>* check box unticked (as separate view)</small>
+```{r echo=FALSE,message=FALSE}
+
+library(ggplot2)
+library(reshape2)
+library(shiny)
+library(plyr)
+library(gsubfn) #strapply
+
+#   Read in character appearances CSV
+Transport <- read.csv("Transport NSW.csv", stringsAsFactors = FALSE)
+# Relabelling
+colnames(Transport) <- c('line','month','2001','2002','2003','2004','2005','2006','2007','2008','2009','2010','2011','2012','2013')
+# Melt table
+mdata <- melt(Transport, id=c("line","month"))
+# Relabelling
+colnames(mdata) <- c('line','month','year','count')
+# Convert factor (from melt) to int
+mdata$year <- as.numeric(as.character(mdata$year))
+
+# for QA
+line <- c('Western','CBD','Blue Mountains','South')
+year1 <- as.numeric(2003)
+year2 <- as.numeric(2009)
+
+  
+#   get just the data cut within input range
+  rpt_data <- mdata[mdata$line %in% line&mdata$year>=year1&mdata$year<=year2,]
+#   aggr by year/line
+  rpt_year <- ddply(rpt_data,.(line,year),summarize,total_count=sum(count))
+#   plot
+  sp <- ggplot(rpt_year, aes(x=year, y=total_count,fill=line),width = 0.5)
+  sp <- sp + geom_bar(stat="identity", position=position_dodge())
+  sp <- sp + facet_wrap(~line,ncol=3)
+  sp <- sp + geom_smooth()
+  print(sp)
+
+```
+
+
